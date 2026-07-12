@@ -1,11 +1,12 @@
 package com.bugotruco.mishiql.core.api;
 
-/**
- * Reemplaza a WhereStage. El filtro opcional.
- */
-public interface FiltrameStage extends ArmadoListoStage {
-    /**
-     * Aplica el filtro sobre una propiedad del JSON.
-     */
-    BuscaleElStage siElCampo(String elCampo);
+import com.bugotruco.mishiql.core.exception.MishiQueryException;
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.util.List;
+
+public interface FiltrameStage extends AcomodameStage {
+    BuscaleElStage yElCampo(String elCampo);
+    BuscaleElStage oElCampo(String elCampo);
+    List<JsonNode> jALALO() throws MishiQueryException;
 }

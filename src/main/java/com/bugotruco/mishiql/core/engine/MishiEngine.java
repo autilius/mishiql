@@ -23,61 +23,31 @@ public class MishiEngine {
 
         List<JsonNode> resultado = datosOriginales;
 
-        // 1. FASE DE FILTRADO (WHERE)
+        // 1. FASE DE FILTRADO (WHERE) - ¡Ahora invoca el contrato flexible!
         if (query.tieneFiltros()) {
             resultado = filtrarDatos(resultado, query.criterio());
         }
 
-        // 2. FASE DE ORDENAMIENTO (ORDER BY) - ¡NUEVO!
+        // 2. FASE DE ORDENAMIENTO (ORDER BY) - (Impecable, se queda igual)
         if (query.tieneOrdenamiento()) {
             resultado = ordenarDatos(resultado, query.campoOrden(), query.esAscendente());
         }
 
-        // 3. FASE DE PROYECCIÓN (SELECT) - ¡NUEVO!
+        // 3. FASE DE PROYECCIÓN (SELECT) - (Impecable, se queda igual)
         resultado = proyectarCampos(resultado, query.camposAProyectar());
 
         return resultado;
     }
 
-    // --- Métodos de Filtrado (Los que ya tenías ayer) ---
+    // --- 1. FASE DE FILTRADO (La nueva versión limpia) ---
     private static List<JsonNode> filtrarDatos(List<JsonNode> datos, MishiCriterio criterio) {
         return datos.stream()
-                .filter(nodo -> evaluarFiltro(nodo, criterio))
+                // Borramos el viejo 'evaluarFiltro' y dejamos que el contrato haga su magia recursiva
+                .filter(criterio::evaluar)
                 .collect(Collectors.toList());
     }
 
-    private static boolean evaluarFiltro(JsonNode nodo, MishiCriterio criterio) {
-        JsonNode campoNodo = nodo.get(criterio.campo());
-        if (campoNodo == null || campoNodo.isNull()) {
-            return false;
-        }
-
-        String operador = criterio.operador();
-        Object valorEsperado = criterio.valor();
-
-        switch (operador) {
-            case "IGUAL":
-                return campoNodo.asText().equals(String.valueOf(valorEsperado));
-            case "DIFERENTE":
-                return !campoNodo.asText().equals(String.valueOf(valorEsperado));
-            case "MAYOR":
-                if (campoNodo.isNumber() && valorEsperado instanceof Number) {
-                    return campoNodo.asDouble() > ((Number) valorEsperado).doubleValue();
-                }
-                throw new MishiQueryException("MAYOR A requiere un campo numérico: " + criterio.campo());
-            case "MENOR":
-                if (campoNodo.isNumber() && valorEsperado instanceof Number) {
-                    return campoNodo.asDouble() < ((Number) valorEsperado).doubleValue();
-                }
-                throw new MishiQueryException("MENOR A requiere un campo numérico: " + criterio.campo());
-            case "CONTAINS":
-                return campoNodo.asText().contains(String.valueOf(valorEsperado));
-            default:
-                throw new MishiQueryException("Operador desconocido: " + operador);
-        }
-    }
-
-    // --- 2. FASE DE ORDENAMIENTO (Implementación) ---
+    // --- 2. FASE DE ORDENAMIENTO (Tu lógica intacta) ---
     private static List<JsonNode> ordenarDatos(List<JsonNode> datos, String campo, boolean esAscendente) {
         Comparator<JsonNode> comparator = (nodo1, nodo2) -> {
             JsonNode val1 = nodo1.get(campo);
@@ -86,15 +56,12 @@ public class MishiEngine {
             if (val1 == null || val1.isNull()) return 1;  // Mandamos nulos al final
             if (val2 == null || val2.isNull()) return -1;
 
-            // Si son números, comparamos numéricamente para evitar que "10" sea menor que "2"
             if (val1.isNumber() && val2.isNumber()) {
                 return Double.compare(val1.asDouble(), val2.asDouble());
             }
-            // Si es texto o cualquier otra cosa, comparación alfabética estándar
             return val1.asText().compareTo(val2.asText());
         };
 
-        // Si el usuario pidió AL_REVES, invertimos el comparador
         if (!esAscendente) {
             comparator = comparator.reversed();
         }
@@ -102,24 +69,20 @@ public class MishiEngine {
         return datos.stream().sorted(comparator).collect(Collectors.toList());
     }
 
-    // --- 3. FASE DE PROYECCIÓN (Implementación) ---
+    // --- 3. FASE DE PROYECCIÓN (Tu zarpazo intacto) ---
     private static List<JsonNode> proyectarCampos(List<JsonNode> datos, List<String> camposAProyectar) {
-        // Si pidieron "*" o no hay restricciones, pasamos los JSONs completitos
         if (camposAProyectar.contains("*")) {
             return datos;
         }
 
         return datos.stream()
                 .map(nodo -> {
-                    // Clonamos el nodo como un ObjectNode mutable para poder podar los campos sobrantes
                     ObjectNode nodoRecortado = nodo.deepCopy();
-
-                    // Usamos un iterador para remover de forma segura los campos que NO pidió el usuario
                     Iterator<String> nombresDeCampos = nodoRecortado.fieldNames();
                     while (nombresDeCampos.hasNext()) {
                         String nombreCampo = nombresDeCampos.next();
                         if (!camposAProyectar.contains(nombreCampo)) {
-                            nombresDeCampos.remove(); // Zarpazo: campo eliminado de la vista
+                            nombresDeCampos.remove();
                         }
                     }
                     return (JsonNode) nodoRecortado;

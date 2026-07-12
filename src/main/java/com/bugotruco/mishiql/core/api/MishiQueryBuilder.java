@@ -1,5 +1,7 @@
-package com.bugotruco.mishiql.core.api; // Asegúrate de usar el package que tienes en tu proyecto
+package com.bugotruco.mishiql.core.api;
 
+import com.bugotruco.mishiql.core.ast.MishiCriterioSimple;
+import com.bugotruco.mishiql.core.ast.MishiCriterioCompuesto;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.bugotruco.mishiql.core.ast.MishiCriterio;
 import com.bugotruco.mishiql.core.ast.MishiQuery;
@@ -11,15 +13,15 @@ import java.util.List;
 
 public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElStage, AcomodameStage {
 
-    // El baúl original en memoria
     private final List<JsonNode> datos;
 
-    // --- Caja de herramientas para ir acumulando las elecciones del usuario ---
     private List<String> camposSeleccionados = new ArrayList<>();
     private String campoFiltroActual;
-    private MishiCriterio criterioFinal = null; // Puede quedarse null si no usan WHERE
-    private String campoOrdenFinal = null;       // Puede quedarse null si no ordenan
-    private boolean esAscendente = true;         // Por defecto AL_DERECHO
+    private String campoOrdenFinal = null;
+    private boolean esAscendente = true;
+
+    private final List<MishiCriterio> listaDeCriterios = new ArrayList<>();
+    private String operadorLogicoActual = "AND";
 
     public MishiQueryBuilder(List<JsonNode> elBaul) {
         this.datos = elBaul;
@@ -27,7 +29,7 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
 
     // --- 1. PASO: ¿Qué campos quiere? ---
     @Override
-    public FiltrameStage traeme(String... losCampos) {
+    public BuscaleElStage traeme(String... losCampos) {
         if (losCampos != null && losCampos.length > 0) {
             this.camposSeleccionados = Arrays.asList(losCampos);
         }
@@ -44,38 +46,59 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
         return this;
     }
 
-    // --- 3. PASO: Los operadores (Ahora ya no retornan null, retornan el paso de ordenamiento) ---
+    // --- 3. PASO: Los operadores de BuscaleElStage ---
     @Override
-    public AcomodameStage esIgualA(Object elValor) {
-        this.criterioFinal = new MishiCriterio(this.campoFiltroActual, "IGUAL", elValor);
+    public FiltrameStage esIgualA(Object elValor) {
+        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "IGUAL", elValor));
         return this;
     }
 
     @Override
-    public AcomodameStage esMayorA(Object elValor) {
-        this.criterioFinal = new MishiCriterio(this.campoFiltroActual, "MAYOR", elValor);
+    public FiltrameStage esMayorA(Object elValor) {
+        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "MAYOR", elValor));
         return this;
     }
 
     @Override
-    public AcomodameStage esMenorA(Object elValor) {
-        this.criterioFinal = new MishiCriterio(this.campoFiltroActual, "MENOR", elValor);
+    public FiltrameStage esMenorA(Object elValor) {
+        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "MENOR", elValor));
         return this;
     }
 
     @Override
-    public AcomodameStage traeElTextito(Object elValor) {
-        this.criterioFinal = new MishiCriterio(this.campoFiltroActual, "CONTAINS", elValor);
+    public FiltrameStage traeElTextito(Object elValor) {
+        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "CONTAINS", elValor));
         return this;
     }
 
     @Override
-    public AcomodameStage noEsIgualA(Object elValor) {
-        this.criterioFinal = new MishiCriterio(this.campoFiltroActual, "DIFERENTE", elValor);
+    public FiltrameStage noEsIgualA(Object elValor) {
+        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "DIFERENTE", elValor));
         return this;
     }
 
-    // --- 4. PASO: El Ordenamiento (Opcional) ---
+    // --- 4. PASO: Encadenamiento (FiltrameStage) ---
+    @Override
+    public BuscaleElStage yElCampo(String elCampo) {
+        if (elCampo == null || elCampo.isBlank()) {
+            throw new MishiQueryException("Me pasaste un campo vacío para el AND.");
+        }
+        this.operadorLogicoActual = "AND";
+        this.campoFiltroActual = elCampo;
+        return this;
+    }
+
+    @Override
+    public BuscaleElStage oElCampo(String elCampo) {
+        if (elCampo == null || elCampo.isBlank()) {
+            throw new MishiQueryException("Me pasaste un campo vacío para el OR.");
+        }
+        this.operadorLogicoActual = "OR";
+        this.campoFiltroActual = elCampo;
+        return this;
+    }
+
+    // --- 5. PASO: El Ordenamiento (AcomodameStage) ---
     @Override
     public ArmadoListoStage acomodadoPor(String elCampo, ModoOrden elModo) {
         if (elCampo == null || elCampo.isBlank()) {
@@ -86,18 +109,26 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
         return this;
     }
 
-    // --- 5. PASO FINAL: El ensamble de la orden (AST) y ejecución ---
+    // --- 6. PASO FINAL: El gran zarpazo (ArmadoListoStage) ---
     @Override
     public List<JsonNode> jALALO() throws MishiQueryException {
+        MishiCriterio criterioFinal = null;
+
+        if (!this.listaDeCriterios.isEmpty()) {
+            if (this.listaDeCriterios.size() == 1) {
+                criterioFinal = this.listaDeCriterios.get(0);
+            } else {
+                criterioFinal = new MishiCriterioCompuesto(this.listaDeCriterios, this.operadorLogicoActual);
+            }
+        }
 
         MishiQuery papelitoDeLaOrden = new MishiQuery(
                 this.camposSeleccionados,
-                this.criterioFinal,
+                criterioFinal,
                 this.campoOrdenFinal,
                 this.esAscendente
         );
 
-        // 🚀 ¡AQUÍ CONECTAMOS EL MOTOR!
         return com.bugotruco.mishiql.core.engine.MishiEngine.ejecutar(this.datos, papelitoDeLaOrden);
     }
 }

@@ -1,19 +1,12 @@
 package com.bugotruco.mishiql.core.ast;
 
-/**
- * Guarda los tres datos esenciales de una condición de filtrado.
- * Al ser un Record, es inmutable, Thread-Safe y libre de efectos secundarios.
- */
-public record MishiCriterio(String campo, String operador, Object valor) {
+import com.fasterxml.jackson.databind.JsonNode;
 
-    // El constructor compacto de Java 17 nos sirve para meter lógica defensiva básica
-    public MishiCriterio {
-        if (campo == null || campo.isBlank()) {
-            throw new IllegalArgumentException("El campo del criterio no puede ser fantasma.");
-        }
-        if (operador == null || operador.isBlank()) {
-            throw new IllegalArgumentException("El operador del criterio no puede estar vacío.");
-        }
-        // El valor sí podría ser null (ej. buscar si un campo esIgualA(null))
-    }
+/**
+ * La nueva espina dorsal del filtrado en la v2.0.
+ * Al ser una interfaz, nos permite usar el Composite Pattern para AND/OR.
+ */
+public interface MishiCriterio {
+    // Dejamos listo el método que usará el motor para evaluar el nodo
+    boolean evaluar(JsonNode nodo);
 }

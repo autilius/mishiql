@@ -5,11 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bugotruco.mishiql.core.exception.MishiQueryException;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-
 
 public final class MishiQL {
 
@@ -70,5 +69,50 @@ public final class MishiQL {
                 .collect(Collectors.toList());
 
         return new MishiQueryBuilder(baulTransformado);
+    }
+
+    /**
+     * 🔥 ¡LA EMANCIPACIÓN TOTAL! (Variante 4)
+     * Permite usar MishiQL de forma 100% independiente. Va al sistema de archivos,
+     * lee los archivos planos .json de la carpeta del usuario y arranca el motor.
+     */
+    public static TraemeStage desdeCarpeta(String rutaCarpeta) {
+        if (rutaCarpeta == null || rutaCarpeta.isBlank()) {
+            throw new MishiQueryException("La ruta de la carpeta no puede estar vacía.");
+        }
+
+        File carpeta = new File(rutaCarpeta);
+
+        if (!carpeta.exists() || !carpeta.isDirectory()) {
+            throw new MishiQueryException("La ruta no existe o no es una carpeta válida: " + rutaCarpeta);
+        }
+
+        List<JsonNode> datosCargados = new ArrayList<>();
+
+        // Filtramos para leer solo los archivos que terminen en .json en el Linux
+        File[] archivosJson = carpeta.listFiles((dir, name) -> name.toLowerCase().endsWith(".json"));
+
+        if (archivosJson != null) {
+            for (File archivo : archivosJson) {
+                try {
+                    JsonNode nodo = MAPPER.readTree(archivo);
+
+                    // Si el archivo contiene un arreglo de JSONs, extraemos sus elementos
+                    if (nodo.isArray()) {
+                        nodo.forEach(datosCargados::add);
+                    } else {
+                        datosCargados.add(nodo);
+                    }
+                } catch (Exception e) {
+                    throw new MishiQueryException("Error fatal masticando el archivo JSON: " + archivo.getName(), e);
+                }
+            }
+        }
+
+        if (datosCargados.isEmpty()) {
+            throw new MishiQueryException("La carpeta está vacía o no tiene archivos .json válidos.");
+        }
+
+        return new MishiQueryBuilder(datosCargados);
     }
 }
