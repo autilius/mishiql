@@ -75,6 +75,28 @@ public class Main {
 
             System.out.println("🐱 Total de Siberianos encontrados: " + totalSiberianos);
 
+            String rutaGatosCsv = "/home/autilius/Documentos/gatos_mishiql.csv";
+
+            // Saber cuántos Siberianos hay en el CSV
+            long totalSiberianosCsv = MishiQL.desdeCsv(rutaGatosCsv)
+                    .siElCampo("raza").esIgualA("Siberiano")
+                    .cuentalos(); // Debería dar 4
+
+            System.out.println("🐱 Total de Siberianos encontrados en CSV: " + totalSiberianosCsv);
+
+            // Promedio de peso de todos los gatitos
+            double pesoPromedio = MishiQL.desdeCsv(rutaGatosCsv)
+                    .promedioDe("peso_kg"); // Debería dar ~4.28 kg
+
+            System.out.println("🐱 Peso promedio: " + pesoPromedio);
+
+            // Suma de edad de los mininos sin vacunar
+            double sumaEdadesSinVacuna = MishiQL.desdeCsv(rutaGatosCsv)
+                    .siElCampo("vacunado").esIgualA("false")
+                    .sumaDe("edad"); // Debería dar 5 (Agata:3 + Simba:1 + Cleo:1)
+
+            System.out.println("🐱 Suma de edades de gatos sin vacunas: " + sumaEdadesSinVacuna);
+
         } catch (MishiQueryException e) {
             System.err.println("❌ Error en MishiQL: " + e.getMessage());
         } catch (Exception e) {

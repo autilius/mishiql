@@ -28,11 +28,15 @@ public class MishiAnalyticsEngine {
         }
 
         return switch (tipo) {
-            case SUM -> valores.stream().mapToDouble(Double::doubleValue).sum();
-            case AVG -> valores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
-            case MIN -> valores.stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
-            case MAX -> valores.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+            case SUM -> redondear(valores.stream().mapToDouble(Double::doubleValue).sum());
+            case AVG -> redondear(valores.stream().mapToDouble(Double::doubleValue).average().orElse(0.0));
+            case MIN -> redondear(valores.stream().mapToDouble(Double::doubleValue).min().orElse(0.0));
+            case MAX -> redondear(valores.stream().mapToDouble(Double::doubleValue).max().orElse(0.0));
             default -> 0.0;
         };
+    }
+
+    public static double redondear(double valor) {
+        return Math.round(valor * 100.0) / 100.0;
     }
 }

@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.bugotruco.mishiql.core.exception.MishiQueryException;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -114,5 +116,15 @@ public final class MishiQL {
         }
 
         return new MishiQueryBuilder(datosCargados);
+    }
+
+    public static MishiQueryBuilder desdeCsv(String ruta) {
+        try {
+            List<JsonNode> datos = MishiCsvAdapter.convertirCsvAJson(Paths.get(ruta));
+            return new MishiQueryBuilder(datos);
+        } catch (IOException e) {
+            // Envolvemos la excepción chequeada de I/O en la excepción oficial de MishiQL
+            throw new MishiQueryException("No se pudo leer el archivo CSV en la ruta: " + ruta, e);
+        }
     }
 }
