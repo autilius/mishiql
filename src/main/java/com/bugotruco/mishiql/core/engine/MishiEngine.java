@@ -47,14 +47,13 @@ public class MishiEngine {
                 .collect(Collectors.toList());
     }
 
-    // --- 2. FASE DE ORDENAMIENTO (Tu lógica intacta) ---
+    // --- 2. FASE DE ORDENAMIENTO ---
     private static List<JsonNode> ordenarDatos(List<JsonNode> datos, String campo, boolean esAscendente) {
-        Comparator<JsonNode> comparator = (nodo1, nodo2) -> {
-            JsonNode val1 = nodo1.get(campo);
-            JsonNode val2 = nodo2.get(campo);
-
-            if (val1 == null || val1.isNull()) return 1;  // Mandamos nulos al final
-            if (val2 == null || val2.isNull()) return -1;
+        // 1. Definimos la comparación interna solo para nodos que SÍ tienen valor
+        Comparator<JsonNode> comparadorValores = (val1, val2) -> {
+            // Tratar nodos JSON explicitamente nulos (JsonNullNode) como si fueran nulls de Java
+            if (val1.isNull()) return val2.isNull() ? 0 : 1;
+            if (val2.isNull()) return -1;
 
             if (val1.isNumber() && val2.isNumber()) {
                 return Double.compare(val1.asDouble(), val2.asDouble());
@@ -62,14 +61,22 @@ public class MishiEngine {
             return val1.asText().compareTo(val2.asText());
         };
 
+        // 2. Envolvemos la extracción del campo asegurando que los nulos queden al final
+        Comparator<JsonNode> comparator = Comparator.comparing(
+                nodo -> nodo.get(campo),
+                Comparator.nullsLast(comparadorValores)
+        );
+
+        // 3. Si pide orden descendente, invertimos
         if (!esAscendente) {
-            comparator = comparator.reversed();
+            // Nota: Si usas nullsLast con reversed(), la API de Java respeta la posición de los nulos
+            comparator = esAscendente ? comparator : comparator.reversed();
         }
 
         return datos.stream().sorted(comparator).collect(Collectors.toList());
     }
 
-    // --- 3. FASE DE PROYECCIÓN (Tu zarpazo intacto) ---
+    // --- 3. FASE DE PROYECCIÓN (Optimizado y 100% compatible con Jackson) ---
     private static List<JsonNode> proyectarCampos(List<JsonNode> datos, List<String> camposAProyectar) {
         if (camposAProyectar.contains("*")) {
             return datos;
@@ -77,15 +84,21 @@ public class MishiEngine {
 
         return datos.stream()
                 .map(nodo -> {
-                    ObjectNode nodoRecortado = nodo.deepCopy();
-                    Iterator<String> nombresDeCampos = nodoRecortado.fieldNames();
-                    while (nombresDeCampos.hasNext()) {
-                        String nombreCampo = nombresDeCampos.next();
-                        if (!camposAProyectar.contains(nombreCampo)) {
-                            nombresDeCampos.remove();
+                    // Si el nodo no es un objeto JSON (ej. si fuera una cadena o número suelto), lo dejamos pasar
+                    if (!(nodo instanceof ObjectNode objNodo)) {
+                        return nodo;
+                    }
+
+                    // Usamos la fábrica nativa del nodo para crear el nuevo ObjectNode limpio
+                    ObjectNode nuevoNodo = objNodo.arrayNode().objectNode();
+                    // O también: ObjectNode nuevoNodo = objNodo.getFactory().objectNode();
+
+                    for (String campo : camposAProyectar) {
+                        if (objNodo.has(campo)) {
+                            nuevoNodo.set(campo, objNodo.get(campo));
                         }
                     }
-                    return (JsonNode) nodoRecortado;
+                    return (JsonNode) nuevoNodo;
                 })
                 .collect(Collectors.toList());
     }

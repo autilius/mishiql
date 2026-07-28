@@ -68,6 +68,13 @@ public class Main {
 
             System.out.println("🚀 ¡MishiQL Autónomo desde Carpeta!: " + resultadoCarpeta);
 
+            long totalSiberianos = MishiQL.desdeCarpeta(rutaGatos)
+                    .traeme("nombre", "raza", "edad")
+                    .siElCampo("raza").esIgualA("Siberiano")
+                    .cuentalos();
+
+            System.out.println("🐱 Total de Siberianos encontrados: " + totalSiberianos);
+
         } catch (MishiQueryException e) {
             System.err.println("❌ Error en MishiQL: " + e.getMessage());
         } catch (Exception e) {

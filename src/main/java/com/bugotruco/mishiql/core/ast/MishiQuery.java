@@ -1,5 +1,10 @@
 package com.bugotruco.mishiql.core.ast;
 
+import com.bugotruco.mishiql.core.engine.MishiEngine;
+import com.bugotruco.mishiql.core.engine.analytics.AggregationType;
+import com.bugotruco.mishiql.core.engine.analytics.MishiAnalyticsEngine;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
 
 /**
@@ -33,4 +38,5 @@ public record MishiQuery(
     public boolean tieneOrdenamiento() {
         return campoOrden != null && !campoOrden.isBlank();
     }
+
 }

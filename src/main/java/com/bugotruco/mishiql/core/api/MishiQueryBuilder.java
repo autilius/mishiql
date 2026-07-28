@@ -1,17 +1,20 @@
 package com.bugotruco.mishiql.core.api;
 
+import com.bugotruco.mishiql.core.ast.MishiCriterio;
 import com.bugotruco.mishiql.core.ast.MishiCriterioSimple;
 import com.bugotruco.mishiql.core.ast.MishiCriterioCompuesto;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.bugotruco.mishiql.core.ast.MishiCriterio;
 import com.bugotruco.mishiql.core.ast.MishiQuery;
+import com.bugotruco.mishiql.core.engine.MishiEngine;
+import com.bugotruco.mishiql.core.engine.analytics.AggregationType;
+import com.bugotruco.mishiql.core.engine.analytics.MishiAnalyticsEngine;
 import com.bugotruco.mishiql.core.exception.MishiQueryException;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElStage, AcomodameStage {
+public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElStage, AcomodameStage, ArmadoListoStage {
 
     private final List<JsonNode> datos;
 
@@ -20,8 +23,9 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
     private String campoOrdenFinal = null;
     private boolean esAscendente = true;
 
-    private final List<MishiCriterio> listaDeCriterios = new ArrayList<>();
-    private String operadorLogicoActual = "AND";
+    // Guardamos el criterio raíz acumulado para respetar el orden real de AND / OR
+    private MishiCriterio criterioAcumulado = null;
+    private String ultimoOperadorLogico = "AND";
 
     public MishiQueryBuilder(List<JsonNode> elBaul) {
         this.datos = elBaul;
@@ -46,35 +50,48 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
         return this;
     }
 
-    // --- 3. PASO: Los operadores de BuscaleElStage ---
+    // --- 3. PASO: Operadores que registran y encadenan el criterio ---
     @Override
     public FiltrameStage esIgualA(Object elValor) {
-        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "IGUAL", elValor));
+        agregarCriterio(new MishiCriterioSimple(this.campoFiltroActual, "IGUAL", elValor));
         return this;
     }
 
     @Override
     public FiltrameStage esMayorA(Object elValor) {
-        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "MAYOR", elValor));
+        agregarCriterio(new MishiCriterioSimple(this.campoFiltroActual, "MAYOR", elValor));
         return this;
     }
 
     @Override
     public FiltrameStage esMenorA(Object elValor) {
-        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "MENOR", elValor));
+        agregarCriterio(new MishiCriterioSimple(this.campoFiltroActual, "MENOR", elValor));
         return this;
     }
 
     @Override
     public FiltrameStage traeElTextito(Object elValor) {
-        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "CONTAINS", elValor));
+        agregarCriterio(new MishiCriterioSimple(this.campoFiltroActual, "CONTAINS", elValor));
         return this;
     }
 
     @Override
     public FiltrameStage noEsIgualA(Object elValor) {
-        this.listaDeCriterios.add(new MishiCriterioSimple(this.campoFiltroActual, "DIFERENTE", elValor));
+        agregarCriterio(new MishiCriterioSimple(this.campoFiltroActual, "DIFERENTE", elValor));
         return this;
+    }
+
+    // Método auxiliar interno para armar el árbol del Composite Pattern correctamente
+    private void agregarCriterio(MishiCriterio nuevoCriterio) {
+        if (this.criterioAcumulado == null) {
+            this.criterioAcumulado = nuevoCriterio;
+        } else {
+            // Se crea una rama compuesta respetando si fue 'yElCampo' (AND) u 'oElCampo' (OR)
+            this.criterioAcumulado = new MishiCriterioCompuesto(
+                    List.of(this.criterioAcumulado, nuevoCriterio),
+                    this.ultimoOperadorLogico
+            );
+        }
     }
 
     // --- 4. PASO: Encadenamiento (FiltrameStage) ---
@@ -83,7 +100,7 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
         if (elCampo == null || elCampo.isBlank()) {
             throw new MishiQueryException("Me pasaste un campo vacío para el AND.");
         }
-        this.operadorLogicoActual = "AND";
+        this.ultimoOperadorLogico = "AND";
         this.campoFiltroActual = elCampo;
         return this;
     }
@@ -93,7 +110,7 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
         if (elCampo == null || elCampo.isBlank()) {
             throw new MishiQueryException("Me pasaste un campo vacío para el OR.");
         }
-        this.operadorLogicoActual = "OR";
+        this.ultimoOperadorLogico = "OR";
         this.campoFiltroActual = elCampo;
         return this;
     }
@@ -112,23 +129,62 @@ public class MishiQueryBuilder implements TraemeStage, FiltrameStage, BuscaleElS
     // --- 6. PASO FINAL: El gran zarpazo (ArmadoListoStage) ---
     @Override
     public List<JsonNode> jALALO() throws MishiQueryException {
-        MishiCriterio criterioFinal = null;
-
-        if (!this.listaDeCriterios.isEmpty()) {
-            if (this.listaDeCriterios.size() == 1) {
-                criterioFinal = this.listaDeCriterios.get(0);
-            } else {
-                criterioFinal = new MishiCriterioCompuesto(this.listaDeCriterios, this.operadorLogicoActual);
-            }
-        }
-
         MishiQuery papelitoDeLaOrden = new MishiQuery(
                 this.camposSeleccionados,
-                criterioFinal,
+                this.criterioAcumulado,
                 this.campoOrdenFinal,
                 this.esAscendente
         );
 
         return com.bugotruco.mishiql.core.engine.MishiEngine.ejecutar(this.datos, papelitoDeLaOrden);
+    }
+
+    // =========================================================================
+    // IMPLEMENTACIÓN DE DATA ANALYTICS
+    // =========================================================================
+
+    @Override
+    public long cuentalos() {
+        MishiQuery query = construirQuery();
+        List<JsonNode> filtrados = MishiEngine.ejecutar(this.datos, query);
+        return (long) MishiAnalyticsEngine.calcular(filtrados, null, AggregationType.COUNT);
+    }
+
+    @Override
+    public double sumaDe(String campo) {
+        MishiQuery query = construirQuery();
+        List<JsonNode> filtrados = MishiEngine.ejecutar(this.datos, query);
+        return MishiAnalyticsEngine.calcular(filtrados, campo, AggregationType.SUM);
+    }
+
+    @Override
+    public double promedioDe(String campo) {
+        MishiQuery query = construirQuery();
+        List<JsonNode> filtrados = MishiEngine.ejecutar(this.datos, query);
+        return MishiAnalyticsEngine.calcular(filtrados, campo, AggregationType.AVG);
+    }
+
+    @Override
+    public double maximoDe(String campo) {
+        MishiQuery query = construirQuery();
+        List<JsonNode> filtrados = MishiEngine.ejecutar(this.datos, query);
+        return MishiAnalyticsEngine.calcular(filtrados, campo, AggregationType.MAX);
+    }
+
+    @Override
+    public double minimoDe(String campo) {
+        MishiQuery query = construirQuery();
+        List<JsonNode> filtrados = MishiEngine.ejecutar(this.datos, query);
+        return MishiAnalyticsEngine.calcular(filtrados, campo, AggregationType.MIN);
+    }
+
+    // --- Método auxiliar privado para armar el AST inmutable ---
+    private MishiQuery construirQuery() {
+        return new MishiQuery(
+                this.camposSeleccionados,
+                this.criterioAcumulado,
+                this.campoOrdenFinal,
+                this.esAscendente
+        );
     }
 }

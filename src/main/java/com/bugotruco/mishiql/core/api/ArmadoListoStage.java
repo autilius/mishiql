@@ -13,4 +13,11 @@ public interface ArmadoListoStage {
      * @throws MishiQueryException ¡Miau! Si algo truena (tipos incompatibles o campos fantasma).
      */
     List<JsonNode> jALALO() throws MishiQueryException;
+
+    // --- Módulo Data Analytics ---
+    long cuentalos();
+    double sumaDe(String campo);
+    double promedioDe(String campo);
+    double maximoDe(String campo);
+    double minimoDe(String campo);
 }
