@@ -12,7 +12,7 @@ Bajo la estricta auditoría de calidad de **Mimi-chan (The Orange Boss)** y la s
 
 * **NUEVO - Ingesta de Archivos CSV (`MishiQL.desdeCsv`):** Soporte nativo para lectura y transformación transparente de archivos `.csv` a nodos de Jackson en memoria, mapeando inteligentemente números (enteros y decimales), booleanos y texto.
 * **NUEVO - Motor Analítico Integrado (`MishiAnalyticsEngine`):** Realiza operaciones de agregación directamente desde la Fluent API sin requerir procesamiento manual posterior:
-  * `.cuantalos()`: Conteo directo de registros filtrados.
+  * `.cuentalos()`: Conteo directo de registros filtrados.
   * `.promedioDe("campo")`: Cálculo de promedios con redondeo automático a 2 decimales.
   * `.sumaDe("campo")`: Sumatoria de valores numéricos.
   * `.minimoDe("campo")` / `.maximoDe("campo")`: Obtención de valores extremos.
