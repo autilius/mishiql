@@ -1,38 +1,60 @@
-# 🐾 MishiQL v2.0: Motor de Consultas Fluent-DSL para Árboles JSON en Java
+# 🐾 MishiQL v3.0.0: Motor de Consultas y Analítica Fluent-DSL para JSON y CSV en Java
 
-MishiQL es un motor de consultas ligero e independiente diseñado bajo el paradigma de **Domain-Specific Language (DSL)**. Permite ejecutar proyecciones, filtrados dinámicos y ordenamientos sobre estructuras de datos no relacionales (`JsonNode` de Jackson) utilizando una **Fluent API en Spanglish** altamente intuitiva, fluida y fuertemente tipada a nivel de compilación.
+MishiQL es un motor de consultas ligero e independiente diseñado bajo el paradigma de **Domain-Specific Language (DSL)**. Permite ejecutar proyecciones, filtrados dinámicos, ordenamientos y agregaciones analíticas sobre estructuras de datos no relacionales (`JsonNode` de Jackson y archivos `.csv`) utilizando una **Fluent API en Spanglish** altamente intuitiva, fluida y fuertemente tipada a nivel de compilación.
 
-Originalmente concebido como el motor de infraestructura interno para la base de datos documental de *MishiMentor*, la **versión 2.0 (La Emancipación)** independiza por completo el núcleo del sistema. Ahora MishiQL funciona de manera 100% autónoma como una librería híbrida: puede procesar colecciones en memoria, integrarse como puente estructural a orquestadores externos o devorar archivos planos `.json` directamente desde el sistema de archivos de tu entorno distribuido.
+Originalmente concebido como el motor de infraestructura interno para la base de datos documental de *MishiMentor*, la **versión 3.0.0 (La Evolución Analítica)** lleva la herramienta a un nivel de infraestructura NoSQL en memoria. Ahora MishiQL no solo filtra y proyecta, sino que ingiere archivos heterogéneos (JSON y CSV) y ejecuta cálculos analíticos al vuelo con máxima precisión.
 
-Bajo la estricta auditoría de calidad de **Mimi-chan (The Orange Boss)**, MishiQL v2.0 garantiza un control riguroso de tipos en tiempo de diseño, evitando estados inválidos mediante el uso de interfaces de transición por etapas (*Stage-Driven Architecture*).
+Bajo la estricta auditoría de calidad de **Mimi-chan (The Orange Boss)** y la supervisión táctica de **Kakashi (Jefe Supremo de Seguridad)**, MishiQL v3.0.0 garantiza un control riguroso de tipos y un manejo de excepciones limpio a través de `MishiQueryException`.
 
 ---
 
-## ✨ Características Principales de la v2.0
+## ✨ Características Principales de la v3.0.0
 
-* **Spanglish Fluent-DSL (Nuevo):** Diseña consultas complejas con una semántica natural y divertida (`.traeme().siElCampo().esIgualA().jALALO()`) que elimina la verbosidad típica de las consultas nativas en Java.
-* **Arquitectura Basada en Etapas (Stage-Driven):** El encadenamiento de métodos está gobernado por contratos estrictos de interfaces (`TraemeStage`, `BuscaleElStage`, `FiltrameStage`, `AcomodameStage`). El compilador de Java valida la sintaxis de tu consulta en tiempo de desarrollo; es imposible poner un filtro antes de seleccionar los campos.
-* **Autonomía del Sistema de Archivos (Nuevo):** Capacidad nativa de mapear carpetas del usuario en disco. El motor procesa de forma asíncrona y defensiva archivos planos `.json`, extrayendo tanto objetos únicos `{}` como arreglos homogéneos `[{}]`.
-* **Soporte Híbrido de Entrada:** Tres puntos de acceso unificados a través de una fachada limpia (`MishiQL.java`):
-    1. *Memoria Plana:* `MishiQL.desde(List<JsonNode>)` para colecciones vivas.
-    2. *Texto Crudo:* `MishiQL.desdeTextoJson(String)` para payloads e integraciones de API.
-    3. *Disco Local:* `MishiQL.desdeCarpeta(String)` para almacenamiento persistente autónomo.
-* **Abstracción del Árbol de Sintaxis Abstracta (AST):** Implementación interna del **Composite Pattern** para encapsular criterios de evaluación simples (`MishiCriterioSimple`) y compuestos (`MishiCriterioCompuesto`), permitiendo la extensión futura a operadores lógicos complejos anidados (`AND`/`OR`) sin romper el motor de ejecución.
-* **Cero Fugas de Memoria:** Uso centralizado y estático del `ObjectMapper` de Jackson, optimizando el consumo de recursos en la JVM durante auditorías masivas de registros.
+* **NUEVO - Ingesta de Archivos CSV (`MishiQL.desdeCsv`):** Soporte nativo para lectura y transformación transparente de archivos `.csv` a nodos de Jackson en memoria, mapeando inteligentemente números (enteros y decimales), booleanos y texto.
+* **NUEVO - Motor Analítico Integrado (`MishiAnalyticsEngine`):** Realiza operaciones de agregación directamente desde la Fluent API sin requerir procesamiento manual posterior:
+  * `.cuantalos()`: Conteo directo de registros filtrados.
+  * `.promedioDe("campo")`: Cálculo de promedios con redondeo automático a 2 decimales.
+  * `.sumaDe("campo")`: Sumatoria de valores numéricos.
+  * `.minimoDe("campo")` / `.maximoDe("campo")`: Obtención de valores extremos.
+* **NUEVO - Manejo de Excepciones del Dominio (`MishiQueryException`):** Excepción `RuntimeException` unificada con firmas amigables (`🐾 ¡Miau! Error en MishiQL: ...`) para no ensuciar la Fluent API con bloques `try-catch` innecesarios.
+* **Spanglish Fluent-DSL:** Diseña consultas complejas con una semántica natural y divertida (`.siElCampo().esIgualA().cuantalos()`) que elimina la verbosidad típica de Java.
+* **Arquitectura Basada en Etapas (Stage-Driven):** El encadenamiento de métodos está gobernado por contratos estrictos de interfaces (`TraemeStage`, `BuscaleElStage`, `FiltrameStage`, `AcomodameStage`). El compilador de Java valida la sintaxis de tu consulta en tiempo de desarrollo.
+* **Soporte Polimórfico de Entrada:** Puntos de acceso unificados a través de la fachada principal (`MishiQL.java`):
+  1. *Memoria Plana:* `MishiQL.desde(List<JsonNode>)`
+  2. *Texto Crudo:* `MishiQL.desdeTextoJson(String)`
+  3. *Carpeta JSON:* `MishiQL.desdeCarpeta(String)`
+  4. *Archivos CSV:* `MishiQL.desdeCsv(String)`
+* **Abstracción del Árbol de Sintaxis Abstracta (AST):** Implementación del **Composite Pattern** para encapsular criterios de evaluación simples y compuestos.
 
 ---
 
 ## 🛠️ La Anatomía del Lenguaje (¿Cómo se usa?)
 
-Olvídate de la rigidez de los CRUDs tradicionales. Con MishiQL, las consultas recuperan la flexibilidad de los lenguajes declarativos:
-
+### 1. Consulta Tradicional (Proyección + Filtro + Ordenamiento)
 ```java
 List<JsonNode> resultados = MishiQL.desdeCarpeta("/home/usuario/.mishi_vault/json")
         .traeme("nombre", "raza", "edad")             // Proyección selectiva de campos
         .siElCampo("raza").esIgualA("Siberiano")       // Criterio de filtrado dinámico
         .acomodadoPor("edad", ModoOrden.AL_DERECHO)   // Criterio de ordenación descriptivo
-        .jALALO();                                    // El gran zarpazo: Ejecución del motor 
+        .jALALO();                                    // El gran zarpazo: Ejecución del motor
 ```
+### 2. Consultas Analíticas sobre CSV (¡Nuevo en v3.0!)
+```java
+// Contar cuántos Siberianos hay en un CSV
+long totalSiberianos = MishiQL.desdeCsv("datos/gatos.csv")
+        .siElCampo("raza").esIgualA("Siberiano")
+        .cuentalos();
+
+// Promedio de peso de la tropa felina
+double pesoPromedio = MishiQL.desdeCsv("datos/gatos.csv")
+        .promedioDe("peso_kg"); // Retorna 4.28 limpio y redondeado
+
+// Suma de edad de gatos sin vacunar
+double sumaEdades = MishiQL.desdeCsv("datos/gatos.csv")
+        .siElCampo("vacunado").esIgualA("false")
+        .sumaDe("edad");
+```
+
 
 ## 💡 Casos de Uso
 * **Ecosistemas Agénticos Locales:** Infraestructura de almacenamiento rápido para registrar prompts, embeddings y logs de IA en formato JSON plano.
@@ -57,24 +79,34 @@ Para consumir el DSL en cualquier otro desarrollo de tu búnker, añade la depen
 <dependency>
     <groupId>com.bugotruco</groupId>
     <artifactId>mishiql</artifactId>
-    <version>2.0.0</version>
+    <version>3.0.0</version>
 </dependency>
 ```
 
-## 🛡️ Arquitectura del Motor v2.0
-El software se diseñó bajo un desacoplamiento estricto de responsabilidades, respetando los principios **SOLID**:
+## 🛡️ Arquitectura del Motor v3.0
+* `com.bugotruco.mishiql.core.api.MishiQL:` Fachada e interfaz principal encargada de resolver las estrategias de I/O (JSON, CSV, memoria).
 
-* ```com.bugotruco.mishiql.core.api.MishiQL:``` **Fachada e itf principal encargada de resolver las estrategias de I/O y Entrada/Salida.**
+* `com.bugotruco.mishiql.core.adapter.MishiCsvAdapter:` Adaptador encargado de la lectura, tipado automático e ingesta de archivos CSV hacia el modelo interno.
 
-* ```com.bugotruco.mishiql.core.api.MishiQueryBuilder:``` **El constructor fluido que implementa las etapas de la Fluent API y resguarda el estado de la consulta en caliente.**
+* `com.bugotruco.mishiql.core.analytics.MishiAnalyticsEngine:` Motor de operaciones agregadas de bajo nivel (SUM, AVG, MIN, MAX, COUNT) con gestión de precisión flotante.
 
-* ```com.bugotruco.mishiql.core.ast:``` **El núcleo del Árbol de Sintaxis. Contiene la abstracción de MishiCriterio y modela el comportamiento del Composite Pattern para aislar la lógica de los operadores (esIgualA, noEsIgualA, esMayorA, etc.).**
+* `com.bugotruco.mishiql.core.exception.MishiQueryException:` Excepción raíz del dominio para el aislamiento de fallos con traza clara.
 
-* ```com.bugotruco.mishiql.core.engine.MishiEngine:``` **El procesador de bajo nivel que ejecuta la orden final evaluando los nodos de Jackson contra el AST estructurado.**
+* `com.bugotruco.mishiql.core.ast:` El núcleo del Árbol de Sintaxis Abstracta basado en el Composite Pattern.
+
+* `com.bugotruco.mishiql.core.engine.MishiEngine:` El procesador de bajo nivel que ejecuta la orden final evaluando los nodos de Jackson.
+
+## 🐾 Staff Oficial del Búnker MishiQL
+* Salvador (Autilius) Granados Godínez — Senior Java Developer, Creador y Arquitecto del Proyecto.
+
+* Mimi-chan — The Orange Boss & Auditora de Calidad (Abuela de la tropa).
+
+* Yuna-chan — Senior Project Manager (Madre de la tropa).
+
+* Kakashi-kun — Jefe Supremo de Seguridad y Mediador Táctico (El único héroe capaz de mantener la paz con 8 gatas a su alrededor). 🖤🐈‍⬛
 
 ## 🤝 Soporte y Comunidad del Búnker
-Este motor es software de infraestructura libre desarrollado con fines de optimización técnica y abstracción arquitectónica en Java. Si este DSL te ha servido para mandar a volar los CRUDs aburridos y deseas apoyar el desarrollo en el laboratorio:
-
+Este motor es software de infraestructura libre desarrollado con fines de optimización técnica y abstracción arquitectónica en Java. Si este DSL te ha servido en tu laboratorio:
 | Plataforma | Enlace |
 | :--- | :--- |
 | **☕ Cafecito** | [Invítame un café](https://ko-fi.com/bugotruco) |
